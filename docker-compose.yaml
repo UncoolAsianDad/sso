@@ -1,0 +1,46 @@
+version: '3.7'
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: ory
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: ory
+
+  kratos-migrate:
+    image: oryd/kratos:latest-sqlite
+    depends_on:
+      - postgres
+    environment:
+      - DSN=postgres://ory:secret@postgres:5432/ory?sslmode=disable
+    command: migrate sql -e --yes
+
+  kratos:
+    image: oryd/kratos:latest-sqlite
+    depends_on:
+      - kratos-migrate
+    ports:
+      - "4433:4433"
+      - "4434:4434"
+    environment:
+      - DSN=postgres://ory:secret@postgres:5432/ory?sslmode=disable
+
+  hydra:
+    image: oryd/hydra:latest
+    ports:
+      - "4444:4444"
+      - "4445:4445"
+    environment:
+      - DSN=postgres://ory:secret@postgres:5432/ory?sslmode=disable
+      - URLS_SELF_ISSUER=https://localhost:4444/
+      - URLS_CONSENT=https://localhost:3000/consent
+      - SECRETS_SYSTEM=youReallyNeedToChangeThis
+
+  hydra-migrate:
+    image: oryd/hydra:latest
+    depends_on:
+      - postgres
+    environment:
+      - DSN=postgres://ory:secret@postgres:5432/ory?sslmode=disable
+    command: migrate sql -e --yes
